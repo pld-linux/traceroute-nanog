@@ -5,13 +5,13 @@ Release:	2
 License:	distributable
 Group:		Applications/Networking
 Group(pl):	Aplikacje/Sieciowe
-Source:		ftp://ftp.aces.com/pub/software/traceroute/beta/%{name}-%{version}.tar.gz
+Source0:	ftp://ftp.aces.com/pub/software/traceroute/beta/%{name}-%{version}.tar.gz
 Obsoletes:	traceroute
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
-Extended version of normal traceroute utility. It can Report AS# at each
-hop (from GRR), Report owner at each hop (from DNS) etc.
+Extended version of normal traceroute utility. It can Report AS# at
+each hop (from GRR), Report owner at each hop (from DNS) etc.
 
 %description -l pl
 Rozszerzona wersja programu traceroute.
