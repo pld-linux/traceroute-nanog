@@ -1,9 +1,11 @@
 Summary:	trace the route ip packets follow going to "host"
+Summary(pl):	Program do ¶ledzenia ¶cie¿ki pakietów IP
 Name:		traceroute-nanog
 Version:	2.9.3
 Release:	2
 License:	distributable
 Group:		Applications/Networking
+Group(de):	Applikationen/Netzwerkwesen
 Group(pl):	Aplikacje/Sieciowe
 Source0:	ftp://ftp.aces.com/pub/software/traceroute/beta/%{name}-%{version}.tar.gz
 Obsoletes:	traceroute
@@ -19,13 +21,13 @@ Rozszerzona wersja programu traceroute.
 %prep
 %setup -q
 %build
-gcc $RPM_OPT_FLAGS -lresolv -lm -o tracerouten traceroute.c
+%{__cc} %{rpmcflags} -lresolv -lm -o tracerouten traceroute.c
 
 %install
 rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT%{_sbindir}
 
-install -s tracerouten $RPM_BUILD_ROOT%{_sbindir}/traceroute
+install tracerouten $RPM_BUILD_ROOT%{_sbindir}/traceroute
 
 gzip -9nf 0_readme.txt
 
@@ -35,4 +37,4 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(644,root,root,755)
 %doc *.gz
-%attr(4755,root,bin) %{_sbindir}/traceroute
+%attr(4754,root,icmp) %{_sbindir}/traceroute
