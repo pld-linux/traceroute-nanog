@@ -1,7 +1,7 @@
---- traceroute-nanog-6.3.9.orig/traceroute.8
-+++ traceroute-nanog-6.3.9/traceroute.8
+--- traceroute-nanog-6.3.10.orig/debian/traceroute.8
++++ traceroute-nanog-6.3.10/debian/traceroute.8
 @@ -0,0 +1,306 @@
-+.TH TRACEROUTE 8 "July 2003" "NANOG traceroute 6.3.9"
++.TH TRACEROUTE 8 "March 2004" "NANOG traceroute 6.3.10"
 +.SH NAME
 +traceroute - print route IP packets follow going to a remote host
 +.SH SYNOPSIS
@@ -31,12 +31,12 @@
 +.\" .TP
 +.\" \fB\-f\fR \fIport\fR
 +.\" Set source port of outgoing packets to \fIport\fR (default 1000).
-+.TP
-+\fB\-g\fR \fIhost\fR
-+All packets are routed via \fIhost\fR as an intermediate hop.  This
-+option may be given at most eight times, and makes use of an IP option
-+called Loose Source Recording and Routing (LSRR).  Many routers are
-+configured to drop such packets.
++.\" .TP
++.\" \fB\-g\fR \fIhost\fR
++.\" All packets are routed via \fIhost\fR as an intermediate hop.  This
++.\" option may be given at most eight times, and makes use of an IP option
++.\" called Loose Source Recording and Routing (LSRR).  Many routers are
++.\" configured to drop such packets.
 +.TP
 +\fB\-m\fR \fImax_ttl\fR
 +Set the maximum time-to-live (TTL) value that will be used for probing.
@@ -300,7 +300,7 @@
 +them to the Debian Bug Tracking System at
 +\fIhttp://bugs.debian.org/traceroute-nanog\fP.
 +.SH AUTHORS
-+TrACESroute is maintained by Ehud Gavron <gavron@wetwork.net>.
++TrACESroute is maintained by Ehud Gavron <ehud.gavron@login.com>.
 +.P
 +The first man page was written by Brian Russo for use with Debian/GNU,
 +and was later rewritten by Daniel Kobras <kobras@debian.org> and
