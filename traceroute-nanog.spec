@@ -4,7 +4,6 @@ Version:	2.9.3
 License:	PSC?
 Release:	1
 Group:		Applications/Internet
-######		/home/lukasz/rpm/groups: no such file
 Source:		ftp://ftp.aces.com/pub/software/traceroute/beta/%{name}-%{version}.tar.gz
 BuildRoot:	/tmp/%{name}-%{version}-root
 
