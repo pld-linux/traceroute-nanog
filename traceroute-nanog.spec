@@ -28,7 +28,7 @@ GRR), w³a¶ciciela (z DNS) itp. na ka¿dym kroku.
 %patch -p1
 
 # remember to update numbers on earch upgrade!
-tail +229 traceroute.c | head -n 309 > ChangeLog
+tail -n +229 traceroute.c | head -n 309 > ChangeLog
 
 %build
 %{__cc} %{rpmldflags} %{rpmcflags} -o tracerouten traceroute.c -lm -lresolv
