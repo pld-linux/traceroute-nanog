@@ -1,16 +1,16 @@
 Summary:	Trace the route of IP packets going to "host"
 Summary(pl):	Program do ¶ledzenia ¶cie¿ki pakietów IP
 Name:		traceroute-nanog
-Version:	6.1.1
+Version:	6.3.6
 Release:	1
 License:	distributable
 Group:		Applications/Networking
-# original URL - but there is only vulnerable 6.1.3 here
+# original URL - but there is only vulnerable 6.3.0 here
 #Source0:	ftp://ftp.login.com/pub/software/traceroute/dist/%{name}-%{version}.tar.gz
-# ...or latest version (6.2.0 at the moment), but only code, without other files :/
+# ...or latest version, but only source code, without other files
 #Source0:	ftp://ftp.login.com/pub/software/traceroute/beta/traceroute.c
-Source0:	ftp://ftp.debian.org/debian/pool/main/t/traceroute-nanog/traceroute-nanog_6.1.1.orig.tar.gz
-# Source0-md5:	493e77d8cf0e86744668e3efd4622378
+Source0:	ftp://ftp.debian.org/debian/pool/main/t/traceroute-nanog/%{name}_%{version}.orig.tar.gz
+# Source0-md5:	85fdf9cd2e28b04f0f2095571ed1a850
 Patch0:		%{name}-debian.patch
 Obsoletes:	traceroute
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
@@ -28,7 +28,7 @@ GRR), w³a¶ciciela (z DNS) itp. na ka¿dym kroku.
 %patch -p1
 
 %build
-%{__cc} %{rpmcflags} -o tracerouten traceroute.c -lm -lresolv
+%{__cc} %{rpmldflags} %{rpmcflags} -o tracerouten traceroute.c -lm -lresolv
 
 %install
 rm -rf $RPM_BUILD_ROOT

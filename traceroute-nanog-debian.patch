@@ -1,270 +1,353 @@
---- traceroute-nanog-6.1.1.orig/traceroute.c
-+++ traceroute-nanog-6.1.1/traceroute.c
-@@ -597,6 +597,8 @@
- #include <netdb.h>
- #include <ctype.h>
- #include <math.h>		/* After resolv.h for gcc2.7/sun __p redef */
-+#include <signal.h>
-+#undef __linux__		/* workarounds not needed for a long time */
- 
- #ifndef NO_PROTOTYPES		/* By default, have prototypes */
- int send_probe(int, int);
-@@ -706,11 +708,13 @@
- 
- int s;				/* receive (icmp) socket file descriptor */
- int sndsock;			/* send (udp) socket file descriptor */
-+#if 0
- #if defined(FREEBSD) || defined(__linux__)
- struct timezone tz;
- #else
- unsigned long   tz;             /* leftover */
- #endif
-+#endif
- struct sockaddr whereto;	/* Who to try to reach */
- struct sockaddr_in addr_last;	/* last printed address */
- int datalen;			/* How much data */
-@@ -781,6 +785,31 @@
- 
- float deltaT();
- 
-+/* cph 2000/10/15 - move raw socket code to separate function */
-+void get_sockets(void)
-+{
-+	struct protoent *pe;
-+	int on = 1;
-+
-+	if ((pe = getprotobyname("icmp")) == NULL) {
-+		Fprintf(stderr, "icmp: unknown protocol%s",terminator);
-+		exit(10);
-+	}
-+	if ((s = socket(AF_INET, SOCK_RAW, pe->p_proto)) < 0) {
-+		perror("traceroute: icmp socket");
-+		exit(5);
-+	}
-+	if (options & SO_DEBUG)
-+		(void) setsockopt(s, SOL_SOCKET, SO_DEBUG,
-+				  (char *)&on, sizeof(on));
-+	if (options & SO_DONTROUTE)
-+		(void) setsockopt(s, SOL_SOCKET, SO_DONTROUTE,
-+				  (char *)&on, sizeof(on));
-+	if ((sndsock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) {
-+		perror("traceroute: raw socket");
-+		exit(5);
-+	}
-+}
- main(argc, argv)
- 	int argc;
- 	char *argv[];
-@@ -823,7 +852,13 @@
- 	struct timeval deadline;
- 	struct ip *ip;
- 
--
-+	/* cph 2000/10/15 - get raw sockets then drop priviledges ASAP */
-+	get_sockets();
-+	if (setuid(getuid())) {
-+		perror("setuid");
-+		exit(errno);
-+	}
-+	/* cph - end of additions */
- 
- 	sprintf(terminator,"\n");	/* Standard line terminator */
- 	oix = optlist;
-@@ -891,8 +926,8 @@
- 			case 'S':
- 				argc--, AbortIfNull((++av)[0]);
- 				min_ttl = atoi(av[0]);
--				if (min_ttl > max_ttl) {
--					Fprintf(stderr, "min ttl must be >=%d%s",max_ttl,terminator);
-+				if ((min_ttl < 0) || (min_ttl > max_ttl)) {
-+					Fprintf(stderr, "min ttl must be >=%d%s and >0",max_ttl,terminator);
- 					exit(1);
- 				}
- 				goto nextarg;
-@@ -995,6 +1030,13 @@
- 	nextarg:
- 		argc--, av++;
- 	}
-+#ifdef SPRAY
-+	/* Prevent overflow of spray[] array */
-+	if (spray_mode && (nprobes*max_ttl > SPRAYMAX)) {
-+		Fprintf(stderr, "too many spray packets\n");
-+		exit(1);
-+	}
-+#endif /* SPRAY */
- #else /* VMS_CLD defined */
- #include "clis.h"
- #endif /* VMS_CLD */
-@@ -1014,7 +1056,8 @@
- #endif
- 	to->sin_addr.s_addr = inet_addr(av[0]);
- 	if ((int)to->sin_addr.s_addr != -1) {
--		(void) strcpy(hnamebuf, av[0]);
-+		(void) strncpy(hnamebuf, av[0], sizeof(hnamebuf));
-+		hnamebuf[sizeof(hnamebuf)-1] = 0;
- 		hostname = hnamebuf;
- 	} else {
- 		hp = gethostbyname(av[0]);
-@@ -1077,25 +1120,6 @@
- 
- 	ident = (getpid() & 0xffff) | 0x8000;
- 
--	if ((pe = getprotobyname("icmp")) == NULL) {
--		Fprintf(stderr, "icmp: unknown protocol%s",terminator);
--		exit(10);
--	}
--	if ((s = socket(AF_INET, SOCK_RAW, pe->p_proto)) < 0) {
--		perror("traceroute: icmp socket");
--		exit(5);
--	}
--	if (options & SO_DEBUG)
--		(void) setsockopt(s, SOL_SOCKET, SO_DEBUG,
--				  (char *)&on, sizeof(on));
--	if (options & SO_DONTROUTE)
--		(void) setsockopt(s, SOL_SOCKET, SO_DONTROUTE,
--				  (char *)&on, sizeof(on));
--
--	if ((sndsock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) {
--		perror("traceroute: raw socket");
--		exit(5);
--	}
- 
- 	/*  ^C punts you to the next hop.  Twice will exit.  */
- 
-@@ -1273,7 +1297,7 @@
- 	       (void) fflush(stdout);
-             }
- 	 }
--	 Fprintf(stdout,terminator); 
-+	 Fprintf(stdout,"%s",terminator);
- 
- 	 /* If we're running one probe and we get back one packet, that's
- 	    no excuse to quit unless we're really done! */
-@@ -1348,7 +1372,7 @@
-         	       for (probe = 1; probe <= nprobes ; probe++) { 
-                           Fprintf(stdout," *");
-                        } /* end for probes */
--                       Fprintf(stdout,terminator);
-+                       Fprintf(stdout,"%s",terminator);
-                    } /* end for last i */
-         	 } /* endf if spr_ttl ... */
-         
-@@ -1370,7 +1394,7 @@
-     			 }
-              }
- 
--             Fprintf(stdout,terminator);
-+             Fprintf(stdout,"%s",terminator);
- 		 } /* no duplicate entries */
-       } /* end if nonzero type */
-    } /* end for */
-@@ -1847,10 +1871,12 @@
-       cp = hp->h_name;
-     }
-   }
--  if (cp)
--    (void) strcpy(line, cp);
--  else {
--    in.s_addr = ntohl(in.s_addr);
-+  if (cp) {
-+	  (void) strncpy(line, cp, sizeof(line));
-+	  line[sizeof(line)-1] = 0;
-+  } else {
-+
-+	  in.s_addr = ntohl(in.s_addr);
- #define C(x)	((x) & 0xff)
- #ifndef __linux__
-     sprintf(line, "%lu.%lu.%lu.%lu", C(in.s_addr >> 24),
-@@ -2150,6 +2176,7 @@
- 	 */
- 	count = 0;
- 	while ((n = read(s, buf, sizeof(buf))) > 0) {
-+	    if (count + n >= MAXREPLYLEN) break;
- 	    strcpy((char *)&reply[count],(char *)buf);
- 	    count += n;
- 	}
-@@ -2215,7 +2242,6 @@
- 
- 	rp = (char *)reply;		/* initialize main pointer to buffer */
- 	origin[0]='\0';			/* initialize returned string */
--	reply[MAXREPLYLEN-1]='\0';
- 
- 	rp = (char *)strstr(rp,tmp2);	/* Find route: in the string */
- 	while (rp != 0) {		/* If there is such a thing... */
---- traceroute-nanog-6.1.1.orig/traceroute.8
-+++ traceroute-nanog-6.1.1/traceroute.8
-@@ -0,0 +1,74 @@
-+.TH TRACEROUTE 8
+diff -Nur traceroute-nanog-6.3.6.orig/traceroute.8 traceroute-nanog-6.3.6/traceroute.8
+--- traceroute-nanog-6.3.6.orig/traceroute.8	1970-01-01 01:00:00.000000000 +0100
++++ traceroute-nanog-6.3.6/traceroute.8	2003-07-27 15:45:57.000000000 +0200
+@@ -0,0 +1,306 @@
++.TH TRACEROUTE 8 "May 2003" "NANOG traceroute 6.3.6"
 +.SH NAME
-+traceroute - print route packets take to network host
++traceroute - print route IP packets follow going to a remote host
 +.SH SYNOPSIS
-+.B traceroute \fR[\fB-adnruvAMOQ\fR] [\fB-w\fR \fIwait_time\fR] [\fB-S\fR \fIstart_ttl\fR]
-+[\fB-m\fR \fImax_ttl\fR] [\fB-p\fR \fIport\fR] [\fB-q\fR \fInqueries\fR] [\fB-g\fR \fIgateway\fR] [\fB-t\fR \fItos\fR] [\fB-s\fR \fIsrc_addr\fR] [\fB-g\fR \fIrouter\fR] \fIhost\fR [\fIpacket size\fR]
++.B traceroute \fR[\fI options \fR] \fIhost\fR [ \fIsize\fR ]
 +.SH DESCRIPTION
-+Traceroute attempts to trace the route an ip packet follows to some
-+internet host. We find out intermediate hops by launching probe packets
-+with a small ttl (time to live) and then listening for an icmp reply
-+of "time exceeded" from an intermediate router. We start our probes
-+with a ttl of one and then increment by one until we get an icmp
-+"port unreachable", which means we got to "host", or hit the max ttl,
-+which defaults to 30 hops and can be changed with the -m flag.
-+Three probes are sent to each intermediate host (change with -q flag) and a
-+line showing the ttl, network address, and round trip time of each probe is
-+printed. If there is no response within the timeout period (defaults to 5
-+seconds, changed with -w flag), a "*" is printed for that "hop".
-+.LP
-+The only mandatory argument is "HOST".
-+.LP
-+Other options are:
-+.HP
-+\fB\-a\fR: Abort after 10 consecutive drops
-+.HP
-+\fB\-d\fR: Socket level debugging
-+.HP
-+\fB\-g\fR: Use this gateway as an intermediate hop (uses LSRR)
-+.HP
-+\fB\-S\fR: Set start TTL (default 1)
-+.HP
-+\fB\-m\fR: Set maximum TTL (default 30)
-+.HP
-+\fB\-n\fR: Report IP addresses only (not hostnames)
-+.HP
-+\fB\-p\fR: Use an alternate UDP port
-+.HP
-+\fB\-q\fR: Set the number of queries at each TTL (default 3)
-+.HP
-+\fB\-r\fR: Set Dont Route option
-+.HP
-+\fB\-s\fR: Set your source address
-+.HP
-+\fB\-t\fR: Set the IP TOS field (default 0)
-+.HP
-+\fB\-u\fR: Use microsecond timestamps
-+.HP
-+\fB\-v\fR: Verbose
-+.HP
-+\fB\-w\fR: Set timeout for replies (default 5 sec)
-+.HP
-+\fB\-A\fR: Report AS# at each hop (from GRR)
-+.HP
-+\fB\-M\fR: Do RFC1191 path MTU discovery
-+.HP
-+\fB\-O\fR: Report owner at each hop (from DNS)
-+.HP
-+\fB\-P\fR: Parallel probing
-+.HP
-+\fB\-Q\fR: Report delay statistics at each hop (min/avg+-stddev/max) (ms)
-+.HP
-+\fB\-T\fR: Terminator (line end terminator)
-+.HP
-+\fB\-U\fR: Go to next hop on any success
-+.SH "NOTES"
-+This is not the "normal" version of traceroute, this is the traceroute
-+program maintained by Ehud Gavron at aces.com. It is based on the Van
-+Jacobson/BSD traceroute with additional features including AS lookup, TOS
-+support, microsecond timestamps, path MTU discovery, and parallel probing.
-+.SH "AUTHORS"
-+TrACESroute is maintained by Ehud Gavron at aces.com <gavron@aces.com>
-+.LP
-+This man page was written by Brian Russo for use with Debian/GNU, but may be
++Traceroute attempts to trace the route an IP packet follows to some
++internet host.  It finds out intermediate hops by launching probe packets
++with a small time-to-live (TTL) value, and then listens for an ICMP reply
++of \fItime exceeded\fP from an intermediate router.  Traceroute starts
++probing with a TTL of one, and increments by one until an ICMP
++\fIport unreachable\fP reply is received.  This means the probe either
++got through to \fIhost\fP, or hit the maximum TTL.
++.P
++\fIhost\fP is the only mandatory argument, and specifies the target
++system, either as an IP address, or as a host name.  Parameter
++\fIsize\fP determines the size of the probe packets in bytes.
++.P
++.SH OPTIONS
++.TP
++\fB\-a\fR
++Abort after 10 consecutive drops.
++.TP
++\fB\-d\fR
++Turn on socket level debugging.  This option is only available to the
++super-user (root).
++.\" The option is implemented but the code doesn't use it.
++.\" .TP
++.\" \fB\-f\fR \fIport\fR
++.\" Set source port of outgoing packets to \fIport\fR (default 1000).
++.TP
++\fB\-g\fR \fIhost\fR
++All packets are routed via \fIhost\fR as an intermediate hop.  This
++option may be given at most eight times, and makes use of an IP option
++called Loose Source Recording and Routing (LSRR).  Many routers are
++configured to drop such packets.
++.TP
++\fB\-m\fR \fImax_ttl\fR
++Set the maximum time-to-live (TTL) value that will be used for probing.
++Hosts that are farther than \fImax_ttl\fR hops away will not be traced
++(default 30).
++.TP
++\fB\-n\fR
++Report only IP addresses, but no hostnames.
++.TP
++\fB\-p\fR \fIport\fR
++Start probing at an alternate UDP port (default 33434).  Traceroute
++by default sends out UDP packets with increasing port numbers starting
++at \fIport\fR, and listens for ICMP errors returned from remote hosts.
++This scheme only works if there are no UDP servers listening on the
++probed hosts in the range from \fIport\fR to \fIport + max_ttl\fR.
++.TP
++\fB\-q\fR \fIn\fR
++Send out \fIn\fR queries for each TTL (each intermediate host) (default
++3).
++.TP
++\fB\-r\fR
++Set Dont Route option, advising routers to drop the packets.  In other
++words, only probe within the local subnet.
++.TP
++\fB\-s\fR \fIaddr\fR
++Set source address of outgoing packets to \fIaddr\fR, given either as
++numeric IP address, or as hostname.
++.TP
++\fB\-t\fR \fItos\fR
++Set the type-of-service field in the outgoing IP packets (default 0).
++\fItos\fR is valid in the range of 0 to 255.
++.TP
++\fB\-u\fR
++Use microsecond timestamps.
++.TP
++\fB\-v\fR
++Turn on verbose output.
++.TP
++\fB\-w\fR \fIwait\fR
++Set timeout for replies to \fIwait\fR seconds (default 5 sec).  If no
++ICMP reply is received within \fIwait\fR after a packet has been sent
++out, the probe is considered as failed.
++.TP
++\fB\-A\fR
++Report the Autonomous System Number (ASN) at each hop.  Roughly
++speaking, the ASN tells which administration a router is subject to.
++See RFC 1930 for all the details, and section ENVIRONMENT below on how
++to fine tune the lookup.
++.TP
++\fB\-I\fR \fIproto\fR
++Send out probe packets using IP protocol \fIproto\fR, given either as
++name or numerical value (default UDP).  Some features like parallel
++probing are only available when using UDP.
++.TP
++\fB\-M\fR
++Determine the maximum transfer unit (MTU) along the path.  See RFC 1191
++for details.
++.TP
++\fB\-O\fR
++At each hop, perform a DNS lookup and report the owner as listed in the
++SOA record.
++.TP
++\fB\-P\fR
++Send out multiple probes in parallel.  The default behaviour probes each
++hop in turn, starting from the nearest.  Parallel mode is faster, but
++less reliable.  Many routers rate limit ICMP packets from a single host,
++so dropouts are much more likely in parallel mode, and need not indicate
++a networking problem.
++.TP
++\fB\-Q\fR
++Report detailed statistics on the round trip times at each hop (minimum /
++average +- standard deviation / maximum).  The values
++are given in milli seconds.
++.TP
++\fB\-S\fR \fImin_ttl\fR
++Set the time-to-live (TTL) value in the first packet sent out to
++\fImin_ttl\fR (default 1).  This option determines the first (nearest) host
++that will show up in the trace.
++.TP
++\fB\-T\fR \fIt\fR
++End each line with \fIt\fR instead of a newline.  This comes in handy,
++for example, when including traceroute's output in an HTML page.
++.TP
++\fB\-U\fR
++Move on to probing the next hop as soon as the first successful probe
++arrives.
++.TP
++\fB\-$\fR
++Send out nothing but a single ping with a very large time-to-live.
++.SH DIAGNOSTICS
++Usually the round trip time is printed for each probe at each hop.
++Special symbols denote when something went wrong:
++.TP
++\fB*\fR
++No reply received within \fIwait\fR seconds.
++.TP
++\fB!\fR
++Reply arrived with a time-to-live value of one or lower.
++.TP
++\fB!H\fR
++Received a reply telling that the destination host is unreachable.
++.TP
++\fB!N\fR
++Received a reply telling that the destination network is unreachable.
++.TP
++\fB!P\fR
++Received a reply telling that the desired protocol is unavailable.
++.TP
++\fB!S\fR
++Received a reply telling that source routing failed.  Should never
++occur--unless the probed gateway is screwed.
++.TP
++\fB!F\fR
++Received a reply telling that fragmentation is needed.  Should never
++occur--unless the probed gateway is screwed.
++.SH EXAMPLES
++(This section is taken almost verbatim from the documentation in the
++traceroute sourcecode.)
++.P
++.RS
++.nf
++[yak 71]% traceroute nis.nsf.net.
++traceroute to nis.nsf.net (35.1.1.48), 30 hops max, 56 byte packet
++ 1  helios.ee.lbl.gov (128.3.112.1)  19 ms  19 ms  0 ms
++ 2  lilac-dmc.Berkeley.EDU (128.32.216.1)  39 ms  39 ms  19 ms
++ 3  lilac-dmc.Berkeley.EDU (128.32.216.1)  39 ms  39 ms  19 ms
++ 4  ccngw-ner-cc.Berkeley.EDU (128.32.136.23)  39 ms  40 ms  39 ms
++ 5  ccn-nerif22.Berkeley.EDU (128.32.168.22)  39 ms  39 ms  39 ms
++ 6  128.32.197.4 (128.32.197.4)  40 ms  59 ms  59 ms
++ 7  131.119.2.5 (131.119.2.5)  59 ms  59 ms  59 ms
++ 8  129.140.70.13 (129.140.70.13)  99 ms  99 ms  80 ms
++ 9  129.140.71.6 (129.140.71.6)  139 ms  239 ms  319 ms
++10  129.140.81.7 (129.140.81.7)  220 ms  199 ms  199 ms
++11  nic.merit.edu (35.1.1.48)  239 ms  239 ms  239 ms
++.fi
++.RE
++.P
++Note that lines 2 & 3 are the same.  This is due to a buggy
++kernel on the 2nd hop system -- lbl-csam.arpa -- that forwards
++packets with a zero TTL.
++.P
++A more interesting example is:
++.P
++.RS
++.nf
++[yak 72]% traceroute allspice.lcs.mit.edu.
++traceroute to allspice.lcs.mit.edu (18.26.0.115), 30 hops max
++ 1  helios.ee.lbl.gov (128.3.112.1)  0 ms  0 ms  0 ms
++ 2  lilac-dmc.Berkeley.EDU (128.32.216.1)  19 ms  19 ms  19 ms
++ 3  lilac-dmc.Berkeley.EDU (128.32.216.1)  39 ms  19 ms  19 ms
++ 4  ccngw-ner-cc.Berkeley.EDU (128.32.136.23)  19 ms  39 ms  39 ms
++ 5  ccn-nerif22.Berkeley.EDU (128.32.168.22)  20 ms  39 ms  39 ms
++ 6  128.32.197.4 (128.32.197.4)  59 ms  119 ms  39 ms
++ 7  131.119.2.5 (131.119.2.5)  59 ms  59 ms  39 ms
++ 8  129.140.70.13 (129.140.70.13)  80 ms  79 ms  99 ms
++ 9  129.140.71.6 (129.140.71.6)  139 ms  139 ms  159 ms
++10  129.140.81.7 (129.140.81.7)  199 ms  180 ms  300 ms
++11  129.140.72.17 (129.140.72.17)  300 ms  239 ms  239 ms
++12  * * *
++13  128.121.54.72 (128.121.54.72)  259 ms  499 ms  279 ms
++14  * * *
++15  * * *
++16  * * *
++17  * * *
++18  ALLSPICE.LCS.MIT.EDU (18.26.0.115)  339 ms  279 ms  279 ms
++.fi
++.RE
++.P
++(I start to see why I'm having so much trouble with mail to
++MIT.)  Note that the gateways 12, 14, 15, 16 & 17 hops away
++either don't send ICMP "time exceeded" messages or send them
++with a TTL too small to reach us.  14 - 17 are running the
++MIT C Gateway code that doesn't send "time exceeded"s.  God
++only knows what's going on with 12.
++.P
++The silent gateway 12 in the above may be the result of a bug in
++the 4.[23]BSD network code (and its derivatives):  4.x (x <= 3)
++sends an unreachable message using whatever TTL remains in the
++original datagram.  Since, for gateways, the remaining TTL is
++zero, the icmp "time exceeded" is guaranteed to not make it back
++to us.  The behavior of this bug is slightly more interesting
++when it appears on the destination system:
++.P
++.RS
++.nf
++ 1  helios.ee.lbl.gov (128.3.112.1)  0 ms  0 ms  0 ms
++ 2  lilac-dmc.Berkeley.EDU (128.32.216.1)  39 ms  19 ms  39 ms
++ 3  lilac-dmc.Berkeley.EDU (128.32.216.1)  19 ms  39 ms  19 ms
++ 4  ccngw-ner-cc.Berkeley.EDU (128.32.136.23)  39 ms  40 ms  19 ms
++ 5  ccn-nerif35.Berkeley.EDU (128.32.168.35)  39 ms  39 ms  39 ms
++ 6  csgw.Berkeley.EDU (128.32.133.254)  39 ms  59 ms  39 ms
++ 7  * * *
++ 8  * * *
++ 9  * * *
++10  * * *
++11  * * *
++12  * * *
++13  rip.Berkeley.EDU (128.32.131.22)  59 ms !  39 ms !  39 ms !
++.fi
++.RE
++.P
++Notice that there are 12 "gateways" (13 is the final
++destination) and exactly the last half of them are "missing".
++What's really happening is that rip (a Sun-3 running Sun OS3.5)
++is using the TTL from our arriving datagram as the TTL in its
++icmp reply.  So, the reply will time out on the return path
++until we probe with a TTL that's at least twice the path length.
++I.e., rip is really only 7 hops away.
++.SH ENVIRONMENT
++The lookup process of Autonomous System Numbers (ASN, see option
++\fI-A\fP above) can be configured via several environment variables. By
++default, traceroute issues a whois query on the Routing Assets Database
++(RADB) at \fIwhois.ra.net\fP, which should be sufficient in most cases.
++Chances are that you don't want to change anything here, unless you know
++very well what you are doing.
++.P
++The contents of the following environment variables are limited to
++100 characters at most.  Any trailing characters are silently ignored.
++If unset, compiled-in defaults are used.
++.TP
++\fBRA_SERVER\fP
++Server to issue a RADB whois query on, given either as hostname, or
++dotted-quad IP address.  Defaults to \fIwhois.ra.net\fP.
++.TP
++\fBRA_SERVICE\fP
++TCP port to connect to on the whois server, given either as name or port
++number.  Defaults to \fIwhois\fP.
++.P
++The following variables determine how traceroute attempts to extract an
++ASN from the whois reply.
++.TP
++\fBDATA_DELIMITER\fP
++Each line containing an ASN starts with this tag.  Defaults to
++\fIorigin:\fP.
++.P
++The RADB may contain more than one entry for a given IP address.  To
++find out the correct entry, traceroute has to look up the subnet
++that is the most specific to this IP.
++.TP
++\fBROUTE_DELIMITER\fP
++Each line containing a subnet entry starts with this tag.  Defaults to
++\fIroute:\fP.
++.TP
++\fBPREFIX_DELIMITER\fP
++The network IP and the prefix are separated by this tag.  Defaults to
++\fI/\fP.
++.SH NOTES
++This is not the standard version of traceroute (as included in the netkit
++package), but an alternative implementation maintained by Ehud Gavron. It
++is based on the Van Jacobson/BSD traceroute, and includes additional
++features including AS lookup, TOS support, microsecond timestamps,
++path MTU discovery, and parallel probing.  It is known as trACESroute or
++traceroute-nanog.
++.SH SEE ALSO
++.BR mtr (8),
++.BR netstat (8),
++.BR pchar (8),
++.BR ping (8)
++.SH BUGS
++Please send any bugs to Ehud Gavron <gavron@wetwork.net> and/or report
++them to the Debian Bug Tracking System at
++\fIhttp://bugs.debian.org/traceroute-nanog\fP.
++.SH AUTHORS
++TrACESroute is maintained by Ehud Gavron <gavron@wetwork.net>.
++.P
++The first man page was written by Brian Russo for use with Debian/GNU,
++and was later rewritten by Daniel Kobras <kobras@debian.org> and
++Martin A. Godisch <martin@godisch.de>.  Some parts are taken from the
++documentation in the source code.  Still, this man page may be
 +used by others.
+diff -Nur traceroute-nanog-6.3.6.orig/traceroute.c traceroute-nanog-6.3.6/traceroute.c
+--- traceroute-nanog-6.3.6.orig/traceroute.c	2003-05-23 15:23:00.000000000 +0200
++++ traceroute-nanog-6.3.6/traceroute.c	2003-07-27 15:46:21.000000000 +0200
+@@ -878,7 +878,7 @@
+ 
+ char nullstring[] = "<NONE>";
+ 
+-char usage[] = "%s: TrACESroute Usage: traceroute [-adnruvAMOQ] [-w wait] [-S start_ttl] [-m max_ttl] [-p port#] [-q nqueries] [-g gateway] [-t tos] [-s src_addr] [-g router] [-I proto] host [data size]\n\
++char usage[] = "%s: TrACESroute\nUsage: traceroute [-adnruvAMOQ] [-w wait] [-S start_ttl] [-m max_ttl] [-p port#] [-q nqueries] [-g gateway] [-t tos] [-s src_addr] [-g router] [-I proto] host [data size]\n\
+       -a: Abort after 10 consecutive drops\n\
+       -d: Socket level debugging (root only)\n\
+       -g: Use this gateway as an intermediate hop (uses LSRR)\n\
+@@ -1056,7 +1056,7 @@
+ 					probe_protocol = pe->p_proto;
+ 				}
+                                 if (probe_protocol > 254) {
+-                                        Fprintf(stderr, "protocol must be >=254%s",terminator);
++                                        Fprintf(stderr, "protocol must be <=254%s",terminator);
+                                         exit(1);
+                                 }
+                                 goto nextarg;
+@@ -1071,8 +1071,8 @@
+                         case 'm':
+                                 argc--, AbortIfNull((++av)[0]);
+                                 max_ttl = atoi(av[0]);
+-                                if (max_ttl < min_ttl) {
+-                                        Fprintf(stderr, "max ttl must be >%d%s",min_ttl,terminator);
++                                if (max_ttl < min_ttl || max_ttl > SHRT_MAX) {
++                                        Fprintf(stderr, "max ttl must be >%d and <=%d%s",min_ttl,SHRT_MAX,terminator);
+                                         exit(1);
+                                 }
+                                 goto nextarg;
+@@ -1100,8 +1100,8 @@
+                         case 'q':
+                                 argc--, AbortIfNull((++av)[0]);
+                                 nprobes = atoi(av[0]);
+-                                if (nprobes < 1) {
+-                                        Fprintf(stderr, "nprobes must be >0%s",terminator);
++                                if (nprobes < 1 || nprobes > SHRT_MAX) {
++                                        Fprintf(stderr, "nprobes must be >0 and <=%d%s",SHRT_MAX,terminator);
+                                         exit(1);
+                                 }
+                                 goto nextarg;
