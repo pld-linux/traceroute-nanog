@@ -1,0 +1,270 @@
+--- traceroute-nanog-6.1.1.orig/traceroute.c
++++ traceroute-nanog-6.1.1/traceroute.c
+@@ -597,6 +597,8 @@
+ #include <netdb.h>
+ #include <ctype.h>
+ #include <math.h>		/* After resolv.h for gcc2.7/sun __p redef */
++#include <signal.h>
++#undef __linux__		/* workarounds not needed for a long time */
+ 
+ #ifndef NO_PROTOTYPES		/* By default, have prototypes */
+ int send_probe(int, int);
+@@ -706,11 +708,13 @@
+ 
+ int s;				/* receive (icmp) socket file descriptor */
+ int sndsock;			/* send (udp) socket file descriptor */
++#if 0
+ #if defined(FREEBSD) || defined(__linux__)
+ struct timezone tz;
+ #else
+ unsigned long   tz;             /* leftover */
+ #endif
++#endif
+ struct sockaddr whereto;	/* Who to try to reach */
+ struct sockaddr_in addr_last;	/* last printed address */
+ int datalen;			/* How much data */
+@@ -781,6 +785,31 @@
+ 
+ float deltaT();
+ 
++/* cph 2000/10/15 - move raw socket code to separate function */
++void get_sockets(void)
++{
++	struct protoent *pe;
++	int on = 1;
++
++	if ((pe = getprotobyname("icmp")) == NULL) {
++		Fprintf(stderr, "icmp: unknown protocol%s",terminator);
++		exit(10);
++	}
++	if ((s = socket(AF_INET, SOCK_RAW, pe->p_proto)) < 0) {
++		perror("traceroute: icmp socket");
++		exit(5);
++	}
++	if (options & SO_DEBUG)
++		(void) setsockopt(s, SOL_SOCKET, SO_DEBUG,
++				  (char *)&on, sizeof(on));
++	if (options & SO_DONTROUTE)
++		(void) setsockopt(s, SOL_SOCKET, SO_DONTROUTE,
++				  (char *)&on, sizeof(on));
++	if ((sndsock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) {
++		perror("traceroute: raw socket");
++		exit(5);
++	}
++}
+ main(argc, argv)
+ 	int argc;
+ 	char *argv[];
+@@ -823,7 +852,13 @@
+ 	struct timeval deadline;
+ 	struct ip *ip;
+ 
+-
++	/* cph 2000/10/15 - get raw sockets then drop priviledges ASAP */
++	get_sockets();
++	if (setuid(getuid())) {
++		perror("setuid");
++		exit(errno);
++	}
++	/* cph - end of additions */
+ 
+ 	sprintf(terminator,"\n");	/* Standard line terminator */
+ 	oix = optlist;
+@@ -891,8 +926,8 @@
+ 			case 'S':
+ 				argc--, AbortIfNull((++av)[0]);
+ 				min_ttl = atoi(av[0]);
+-				if (min_ttl > max_ttl) {
+-					Fprintf(stderr, "min ttl must be >=%d%s",max_ttl,terminator);
++				if ((min_ttl < 0) || (min_ttl > max_ttl)) {
++					Fprintf(stderr, "min ttl must be >=%d%s and >0",max_ttl,terminator);
+ 					exit(1);
+ 				}
+ 				goto nextarg;
+@@ -995,6 +1030,13 @@
+ 	nextarg:
+ 		argc--, av++;
+ 	}
++#ifdef SPRAY
++	/* Prevent overflow of spray[] array */
++	if (spray_mode && (nprobes*max_ttl > SPRAYMAX)) {
++		Fprintf(stderr, "too many spray packets\n");
++		exit(1);
++	}
++#endif /* SPRAY */
+ #else /* VMS_CLD defined */
+ #include "clis.h"
+ #endif /* VMS_CLD */
+@@ -1014,7 +1056,8 @@
+ #endif
+ 	to->sin_addr.s_addr = inet_addr(av[0]);
+ 	if ((int)to->sin_addr.s_addr != -1) {
+-		(void) strcpy(hnamebuf, av[0]);
++		(void) strncpy(hnamebuf, av[0], sizeof(hnamebuf));
++		hnamebuf[sizeof(hnamebuf)-1] = 0;
+ 		hostname = hnamebuf;
+ 	} else {
+ 		hp = gethostbyname(av[0]);
+@@ -1077,25 +1120,6 @@
+ 
+ 	ident = (getpid() & 0xffff) | 0x8000;
+ 
+-	if ((pe = getprotobyname("icmp")) == NULL) {
+-		Fprintf(stderr, "icmp: unknown protocol%s",terminator);
+-		exit(10);
+-	}
+-	if ((s = socket(AF_INET, SOCK_RAW, pe->p_proto)) < 0) {
+-		perror("traceroute: icmp socket");
+-		exit(5);
+-	}
+-	if (options & SO_DEBUG)
+-		(void) setsockopt(s, SOL_SOCKET, SO_DEBUG,
+-				  (char *)&on, sizeof(on));
+-	if (options & SO_DONTROUTE)
+-		(void) setsockopt(s, SOL_SOCKET, SO_DONTROUTE,
+-				  (char *)&on, sizeof(on));
+-
+-	if ((sndsock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) {
+-		perror("traceroute: raw socket");
+-		exit(5);
+-	}
+ 
+ 	/*  ^C punts you to the next hop.  Twice will exit.  */
+ 
+@@ -1273,7 +1297,7 @@
+ 	       (void) fflush(stdout);
+             }
+ 	 }
+-	 Fprintf(stdout,terminator); 
++	 Fprintf(stdout,"%s",terminator);
+ 
+ 	 /* If we're running one probe and we get back one packet, that's
+ 	    no excuse to quit unless we're really done! */
+@@ -1348,7 +1372,7 @@
+         	       for (probe = 1; probe <= nprobes ; probe++) { 
+                           Fprintf(stdout," *");
+                        } /* end for probes */
+-                       Fprintf(stdout,terminator);
++                       Fprintf(stdout,"%s",terminator);
+                    } /* end for last i */
+         	 } /* endf if spr_ttl ... */
+         
+@@ -1370,7 +1394,7 @@
+     			 }
+              }
+ 
+-             Fprintf(stdout,terminator);
++             Fprintf(stdout,"%s",terminator);
+ 		 } /* no duplicate entries */
+       } /* end if nonzero type */
+    } /* end for */
+@@ -1847,10 +1871,12 @@
+       cp = hp->h_name;
+     }
+   }
+-  if (cp)
+-    (void) strcpy(line, cp);
+-  else {
+-    in.s_addr = ntohl(in.s_addr);
++  if (cp) {
++	  (void) strncpy(line, cp, sizeof(line));
++	  line[sizeof(line)-1] = 0;
++  } else {
++
++	  in.s_addr = ntohl(in.s_addr);
+ #define C(x)	((x) & 0xff)
+ #ifndef __linux__
+     sprintf(line, "%lu.%lu.%lu.%lu", C(in.s_addr >> 24),
+@@ -2150,6 +2176,7 @@
+ 	 */
+ 	count = 0;
+ 	while ((n = read(s, buf, sizeof(buf))) > 0) {
++	    if (count + n >= MAXREPLYLEN) break;
+ 	    strcpy((char *)&reply[count],(char *)buf);
+ 	    count += n;
+ 	}
+@@ -2215,7 +2242,6 @@
+ 
+ 	rp = (char *)reply;		/* initialize main pointer to buffer */
+ 	origin[0]='\0';			/* initialize returned string */
+-	reply[MAXREPLYLEN-1]='\0';
+ 
+ 	rp = (char *)strstr(rp,tmp2);	/* Find route: in the string */
+ 	while (rp != 0) {		/* If there is such a thing... */
+--- traceroute-nanog-6.1.1.orig/traceroute.8
++++ traceroute-nanog-6.1.1/traceroute.8
+@@ -0,0 +1,74 @@
++.TH TRACEROUTE 8
++.SH NAME
++traceroute - print route packets take to network host
++.SH SYNOPSIS
++.B traceroute \fR[\fB-adnruvAMOQ\fR] [\fB-w\fR \fIwait_time\fR] [\fB-S\fR \fIstart_ttl\fR]
++[\fB-m\fR \fImax_ttl\fR] [\fB-p\fR \fIport\fR] [\fB-q\fR \fInqueries\fR] [\fB-g\fR \fIgateway\fR] [\fB-t\fR \fItos\fR] [\fB-s\fR \fIsrc_addr\fR] [\fB-g\fR \fIrouter\fR] \fIhost\fR [\fIpacket size\fR]
++.SH DESCRIPTION
++Traceroute attempts to trace the route an ip packet follows to some
++internet host. We find out intermediate hops by launching probe packets
++with a small ttl (time to live) and then listening for an icmp reply
++of "time exceeded" from an intermediate router. We start our probes
++with a ttl of one and then increment by one until we get an icmp
++"port unreachable", which means we got to "host", or hit the max ttl,
++which defaults to 30 hops and can be changed with the -m flag.
++Three probes are sent to each intermediate host (change with -q flag) and a
++line showing the ttl, network address, and round trip time of each probe is
++printed. If there is no response within the timeout period (defaults to 5
++seconds, changed with -w flag), a "*" is printed for that "hop".
++.LP
++The only mandatory argument is "HOST".
++.LP
++Other options are:
++.HP
++\fB\-a\fR: Abort after 10 consecutive drops
++.HP
++\fB\-d\fR: Socket level debugging
++.HP
++\fB\-g\fR: Use this gateway as an intermediate hop (uses LSRR)
++.HP
++\fB\-S\fR: Set start TTL (default 1)
++.HP
++\fB\-m\fR: Set maximum TTL (default 30)
++.HP
++\fB\-n\fR: Report IP addresses only (not hostnames)
++.HP
++\fB\-p\fR: Use an alternate UDP port
++.HP
++\fB\-q\fR: Set the number of queries at each TTL (default 3)
++.HP
++\fB\-r\fR: Set Dont Route option
++.HP
++\fB\-s\fR: Set your source address
++.HP
++\fB\-t\fR: Set the IP TOS field (default 0)
++.HP
++\fB\-u\fR: Use microsecond timestamps
++.HP
++\fB\-v\fR: Verbose
++.HP
++\fB\-w\fR: Set timeout for replies (default 5 sec)
++.HP
++\fB\-A\fR: Report AS# at each hop (from GRR)
++.HP
++\fB\-M\fR: Do RFC1191 path MTU discovery
++.HP
++\fB\-O\fR: Report owner at each hop (from DNS)
++.HP
++\fB\-P\fR: Parallel probing
++.HP
++\fB\-Q\fR: Report delay statistics at each hop (min/avg+-stddev/max) (ms)
++.HP
++\fB\-T\fR: Terminator (line end terminator)
++.HP
++\fB\-U\fR: Go to next hop on any success
++.SH "NOTES"
++This is not the "normal" version of traceroute, this is the traceroute
++program maintained by Ehud Gavron at aces.com. It is based on the Van
++Jacobson/BSD traceroute with additional features including AS lookup, TOS
++support, microsecond timestamps, path MTU discovery, and parallel probing.
++.SH "AUTHORS"
++TrACESroute is maintained by Ehud Gavron at aces.com <gavron@aces.com>
++.LP
++This man page was written by Brian Russo for use with Debian/GNU, but may be
++used by others.
