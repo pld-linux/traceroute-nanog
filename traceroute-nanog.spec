@@ -37,4 +37,4 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(644,root,root,755)
 %doc *.gz
-%attr(4754,root,icmp) %{_sbindir}/traceroute
+%attr(4754,root,adm) %{_sbindir}/traceroute
