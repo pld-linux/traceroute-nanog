@@ -1,14 +1,12 @@
 Summary:	Trace the route of IP packets going to "host"
 Summary(pl):	Program do ¶ledzenia ¶cie¿ki pakietów IP
 Name:		traceroute-nanog
-Version:	6.3.9
-Release:	3
+Version:	6.3.10
+Release:	1
 License:	distributable
 Group:		Applications/Networking
 # original URL - but there is only vulnerable 6.3.0 here
 #Source0:	ftp://ftp.login.com/pub/software/traceroute/dist/%{name}-%{version}.tar.gz
-# ...or latest version, but only source code, without other files
-#Source0:	ftp://ftp.login.com/pub/software/traceroute/beta/traceroute.c
 Source0:	ftp://ftp.debian.org/debian/pool/main/t/traceroute-nanog/%{name}_%{version}.orig.tar.gz
 # Source0-md5:	3e663d4053da5230e0f0df69e59717a7
 Patch0:		%{name}-debian.patch
@@ -24,21 +22,21 @@ Rozszerzona wersja programu traceroute. Potrafi raportowaæ AS# (z
 GRR), w³a¶ciciela (z DNS) itp. na ka¿dym kroku.
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{version}.orig
 %patch -p1
 
 # remember to update numbers on earch upgrade!
-tail -n +229 traceroute.c | head -n 309 > ChangeLog
+tail -n +232 traceroute.c | head -n 311 > ChangeLog
 
 %build
-%{__cc} %{rpmldflags} %{rpmcflags} -o tracerouten traceroute.c -lm -lresolv
+%{__cc} %{rpmldflags} %{rpmcflags} -Wall -DSTRING -o tracerouten traceroute.c -lm -lresolv
 
 %install
 rm -rf $RPM_BUILD_ROOT
 install -d $RPM_BUILD_ROOT{%{_sbindir},%{_mandir}/man8}
 
 install tracerouten $RPM_BUILD_ROOT%{_sbindir}/traceroute
-install traceroute.8 $RPM_BUILD_ROOT%{_mandir}/man8
+install debian/traceroute.8 $RPM_BUILD_ROOT%{_mandir}/man8
 
 %clean
 rm -rf $RPM_BUILD_ROOT
