@@ -1,8 +1,7 @@
-diff -Nur traceroute-nanog-6.3.6.orig/traceroute.8 traceroute-nanog-6.3.6/traceroute.8
---- traceroute-nanog-6.3.6.orig/traceroute.8	1970-01-01 01:00:00.000000000 +0100
-+++ traceroute-nanog-6.3.6/traceroute.8	2003-07-27 15:45:57.000000000 +0200
+--- traceroute-nanog-6.3.9.orig/traceroute.8
++++ traceroute-nanog-6.3.9/traceroute.8
 @@ -0,0 +1,306 @@
-+.TH TRACEROUTE 8 "May 2003" "NANOG traceroute 6.3.6"
++.TH TRACEROUTE 8 "July 2003" "NANOG traceroute 6.3.9"
 +.SH NAME
 +traceroute - print route IP packets follow going to a remote host
 +.SH SYNOPSIS
@@ -23,7 +22,7 @@ diff -Nur traceroute-nanog-6.3.6.orig/traceroute.8 traceroute-nanog-6.3.6/tracer
 +.SH OPTIONS
 +.TP
 +\fB\-a\fR
-+Abort after 10 consecutive drops.
++Abort after 10 consecutive hops without an answer.
 +.TP
 +\fB\-d\fR
 +Turn on socket level debugging.  This option is only available to the
@@ -308,46 +307,3 @@ diff -Nur traceroute-nanog-6.3.6.orig/traceroute.8 traceroute-nanog-6.3.6/tracer
 +Martin A. Godisch <martin@godisch.de>.  Some parts are taken from the
 +documentation in the source code.  Still, this man page may be
 +used by others.
-diff -Nur traceroute-nanog-6.3.6.orig/traceroute.c traceroute-nanog-6.3.6/traceroute.c
---- traceroute-nanog-6.3.6.orig/traceroute.c	2003-05-23 15:23:00.000000000 +0200
-+++ traceroute-nanog-6.3.6/traceroute.c	2003-07-27 15:46:21.000000000 +0200
-@@ -878,7 +878,7 @@
- 
- char nullstring[] = "<NONE>";
- 
--char usage[] = "%s: TrACESroute Usage: traceroute [-adnruvAMOQ] [-w wait] [-S start_ttl] [-m max_ttl] [-p port#] [-q nqueries] [-g gateway] [-t tos] [-s src_addr] [-g router] [-I proto] host [data size]\n\
-+char usage[] = "%s: TrACESroute\nUsage: traceroute [-adnruvAMOQ] [-w wait] [-S start_ttl] [-m max_ttl] [-p port#] [-q nqueries] [-g gateway] [-t tos] [-s src_addr] [-g router] [-I proto] host [data size]\n\
-       -a: Abort after 10 consecutive drops\n\
-       -d: Socket level debugging (root only)\n\
-       -g: Use this gateway as an intermediate hop (uses LSRR)\n\
-@@ -1056,7 +1056,7 @@
- 					probe_protocol = pe->p_proto;
- 				}
-                                 if (probe_protocol > 254) {
--                                        Fprintf(stderr, "protocol must be >=254%s",terminator);
-+                                        Fprintf(stderr, "protocol must be <=254%s",terminator);
-                                         exit(1);
-                                 }
-                                 goto nextarg;
-@@ -1071,8 +1071,8 @@
-                         case 'm':
-                                 argc--, AbortIfNull((++av)[0]);
-                                 max_ttl = atoi(av[0]);
--                                if (max_ttl < min_ttl) {
--                                        Fprintf(stderr, "max ttl must be >%d%s",min_ttl,terminator);
-+                                if (max_ttl < min_ttl || max_ttl > SHRT_MAX) {
-+                                        Fprintf(stderr, "max ttl must be >%d and <=%d%s",min_ttl,SHRT_MAX,terminator);
-                                         exit(1);
-                                 }
-                                 goto nextarg;
-@@ -1100,8 +1100,8 @@
-                         case 'q':
-                                 argc--, AbortIfNull((++av)[0]);
-                                 nprobes = atoi(av[0]);
--                                if (nprobes < 1) {
--                                        Fprintf(stderr, "nprobes must be >0%s",terminator);
-+                                if (nprobes < 1 || nprobes > SHRT_MAX) {
-+                                        Fprintf(stderr, "nprobes must be >0 and <=%d%s",SHRT_MAX,terminator);
-                                         exit(1);
-                                 }
-                                 goto nextarg;

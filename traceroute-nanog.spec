@@ -1,7 +1,7 @@
 Summary:	Trace the route of IP packets going to "host"
 Summary(pl):	Program do ¶ledzenia ¶cie¿ki pakietów IP
 Name:		traceroute-nanog
-Version:	6.3.6
+Version:	6.3.9
 Release:	1
 License:	distributable
 Group:		Applications/Networking
@@ -10,7 +10,7 @@ Group:		Applications/Networking
 # ...or latest version, but only source code, without other files
 #Source0:	ftp://ftp.login.com/pub/software/traceroute/beta/traceroute.c
 Source0:	ftp://ftp.debian.org/debian/pool/main/t/traceroute-nanog/%{name}_%{version}.orig.tar.gz
-# Source0-md5:	85fdf9cd2e28b04f0f2095571ed1a850
+# Source0-md5:	3e663d4053da5230e0f0df69e59717a7
 Patch0:		%{name}-debian.patch
 Obsoletes:	traceroute
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
@@ -27,6 +27,9 @@ GRR), w³a¶ciciela (z DNS) itp. na ka¿dym kroku.
 %setup -q
 %patch -p1
 
+# remember to update numbers on earch upgrade!
+tail +229 traceroute.c | head -n 309 > ChangeLog
+
 %build
 %{__cc} %{rpmldflags} %{rpmcflags} -o tracerouten traceroute.c -lm -lresolv
 
@@ -42,6 +45,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(644,root,root,755)
-%doc 0_readme.txt faq.txt
+%doc 0_readme.txt faq.txt ChangeLog
 %attr(4754,root,adm) %{_sbindir}/traceroute
 %{_mandir}/man8/traceroute.8*
