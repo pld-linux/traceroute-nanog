@@ -46,5 +46,5 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(644,root,root,755)
 %doc 0_readme.txt faq.txt ChangeLog
 %attr(4754,root,adm) %{_bindir}/*
-%{_sbindir}/*
+%{_sbindir}/traceroute
 %{_mandir}/man8/traceroute.8*
