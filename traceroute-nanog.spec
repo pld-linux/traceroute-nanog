@@ -5,8 +5,6 @@ Version:	2.9.3
 Release:	3
 License:	distributable
 Group:		Applications/Networking
-Group(de):	Applikationen/Netzwerkwesen
-Group(pl):	Aplikacje/Sieciowe
 Source0:	ftp://ftp.aces.com/pub/software/traceroute/beta/%{name}-%{version}.tar.gz
 Obsoletes:	traceroute
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
