@@ -5,8 +5,10 @@ Version:	6.1.1
 Release:	1
 License:	distributable
 Group:		Applications/Networking
-# there is no anonymous access to ftp.aces.com at the moment(?)
-#Source0:	ftp://ftp.aces.com/pub/software/traceroute/beta/%{name}-%{version}.tar.gz
+# original URL - but there is only vulnerable 6.1.3 here
+#Source0:	ftp://ftp.login.com/pub/software/traceroute/dist/%{name}-%{version}.tar.gz
+# ...or latest version (6.2.0 at the moment), but only code, without other files :/
+#Source0:	ftp://ftp.login.com/pub/software/traceroute/beta/traceroute.c
 Source0:	ftp://ftp.debian.org/debian/pool/main/t/traceroute-nanog/traceroute-nanog_6.1.1.orig.tar.gz
 Patch0:		%{name}-debian.patch
 Obsoletes:	traceroute
