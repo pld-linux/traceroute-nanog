@@ -2,7 +2,7 @@ Summary:	trace the route ip packets follow going to "host"
 Summary(pl):	Program do ¶ledzenia ¶cie¿ki pakietów IP
 Name:		traceroute-nanog
 Version:	2.9.3
-Release:	2
+Release:	3
 License:	distributable
 Group:		Applications/Networking
 Group(de):	Applikationen/Netzwerkwesen
