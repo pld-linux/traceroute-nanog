@@ -6,7 +6,7 @@ License:	distributable
 Group:		Applications/Networking
 Group(pl):	Aplikacje/Sieciowe
 Source:		ftp://ftp.aces.com/pub/software/traceroute/beta/%{name}-%{version}.tar.gz
-BuildRoot:	/tmp/%{name}-%{version}-root
+BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %description
 Extended version of normal traceroute utility. It can Report AS# at each
