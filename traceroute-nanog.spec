@@ -10,6 +10,7 @@ Group:		Applications/Networking
 # ...or latest version (6.2.0 at the moment), but only code, without other files :/
 #Source0:	ftp://ftp.login.com/pub/software/traceroute/beta/traceroute.c
 Source0:	ftp://ftp.debian.org/debian/pool/main/t/traceroute-nanog/traceroute-nanog_6.1.1.orig.tar.gz
+# Source0-md5:	493e77d8cf0e86744668e3efd4622378
 Patch0:		%{name}-debian.patch
 Obsoletes:	traceroute
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
