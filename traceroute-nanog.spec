@@ -23,7 +23,7 @@ GRR), w³a¶ciciela (z DNS) itp. na ka¿dym kroku.
 
 %prep
 %setup -q -n %{name}-%{version}.orig
-%patch -p1
+%patch0 -p1
 
 # remember to update numbers on earch upgrade!
 tail -n +232 traceroute.c | head -n 311 > ChangeLog
