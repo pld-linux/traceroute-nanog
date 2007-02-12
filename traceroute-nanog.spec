@@ -1,5 +1,5 @@
 Summary:	Trace the route of IP packets going to "host"
-Summary(pl.UTF-8):   Program do śledzenia ścieżki pakietów IP
+Summary(pl.UTF-8):	Program do śledzenia ścieżki pakietów IP
 Name:		traceroute-nanog
 Version:	6.3.10
 Release:	2
