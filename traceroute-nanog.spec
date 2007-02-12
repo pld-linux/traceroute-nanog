@@ -1,5 +1,5 @@
 Summary:	Trace the route of IP packets going to "host"
-Summary(pl):	Program do ∂ledzenia ∂cieøki pakietÛw IP
+Summary(pl.UTF-8):   Program do ≈õledzenia ≈õcie≈ºki pakiet√≥w IP
 Name:		traceroute-nanog
 Version:	6.3.10
 Release:	2
@@ -17,9 +17,9 @@ BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 Extended version of normal traceroute utility. It can report AS# at
 each hop (from GRR), report owner at each hop (from DNS) etc.
 
-%description -l pl
-Rozszerzona wersja programu traceroute. Potrafi raportowaÊ AS# (z
-GRR), w≥a∂ciciela (z DNS) itp. na kaødym kroku.
+%description -l pl.UTF-8
+Rozszerzona wersja programu traceroute. Potrafi raportowaƒá AS# (z
+GRR), w≈Ça≈õciciela (z DNS) itp. na ka≈ºdym kroku.
 
 %prep
 %setup -q -n %{name}-%{version}.orig
