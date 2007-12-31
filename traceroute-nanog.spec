@@ -1,14 +1,14 @@
 Summary:	Trace the route of IP packets going to "host"
 Summary(pl.UTF-8):	Program do śledzenia ścieżki pakietów IP
 Name:		traceroute-nanog
-Version:	6.3.10
-Release:	2
+Version:	6.4.2
+Release:	1
 License:	distributable
 Group:		Applications/Networking
 # original URL - but there is only vulnerable 6.3.0 here
 #Source0:	ftp://ftp.login.com/pub/software/traceroute/dist/%{name}-%{version}.tar.gz
 Source0:	ftp://ftp.debian.org/debian/pool/main/t/traceroute-nanog/%{name}_%{version}.orig.tar.gz
-# Source0-md5:	c206e5983057a7aaa18683aa3d1b5155
+# Source0-md5:	cd737165e6ab62fef83de1227ae6804b
 Patch0:		%{name}-debian.patch
 Obsoletes:	traceroute
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
