@@ -25,8 +25,12 @@ GRR), właściciela (z DNS) itp. na każdym kroku.
 %setup -q -n %{name}-%{version}.orig
 %patch0 -p1
 
-# remember to update numbers on earch upgrade!
+%if "%{version}" == "6.4.2"
 tail -n +232 traceroute.c | head -n 311 > ChangeLog
+%else
+: update numbers on each upgrade!
+exit 1
+%endif
 
 %build
 %{__cc} %{rpmldflags} %{rpmcflags} -Wall -DSTRING -o tracerouten traceroute.c -lm -lresolv
@@ -45,6 +49,6 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(644,root,root,755)
 %doc 0_readme.txt faq.txt ChangeLog
-%attr(4754,root,adm) %{_bindir}/*
-%{_sbindir}/traceroute
+%attr(4754,root,adm) %{_bindir}/traceroute
+%attr(755,root,root) %{_sbindir}/traceroute
 %{_mandir}/man8/traceroute.8*
