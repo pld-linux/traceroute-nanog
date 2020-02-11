@@ -7,7 +7,7 @@ License:	distributable
 Group:		Applications/Networking
 # original URL - but there is only vulnerable 6.3.0 here
 #Source0:	ftp://ftp.login.com/pub/software/traceroute/dist/%{name}-%{version}.tar.gz
-Source0:	ftp://ftp.debian.org/debian/pool/main/t/traceroute-nanog/%{name}_%{version}.orig.tar.gz
+Source0:	http://ftp.debian.org/debian/pool/main/t/traceroute-nanog/%{name}_%{version}.orig.tar.gz
 # Source0-md5:	cd737165e6ab62fef83de1227ae6804b
 Patch0:		%{name}-debian.patch
 Obsoletes:	traceroute
