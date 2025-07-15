@@ -23,7 +23,7 @@ GRR), właściciela (z DNS) itp. na każdym kroku.
 
 %prep
 %setup -q -n %{name}-%{version}.orig
-%patch0 -p1
+%patch -P0 -p1
 
 %if "%{version}" == "6.4.2"
 tail -n +232 traceroute.c | head -n 311 > ChangeLog
